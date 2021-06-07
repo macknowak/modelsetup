@@ -1,0 +1,30 @@
+# Byte-compiled code
+__pycache__/
+
+# Packaged code
+build/
+dist/
+.eggs/
+*.egg-info/
+MANIFEST
+
+# Virtual environment
+env/
+.env/
+venv/
+.venv/
+virtualenv/
+.virtualenv/
+
+# IDE configuration
+.idea/
+.vscode/
+
+# Editor backup copies
+*~
+*.bak
+*.old
+*.swp
+
+# macOS
+.DS_Store
