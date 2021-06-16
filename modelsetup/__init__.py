@@ -10,6 +10,18 @@ __author__ = "Przemyslaw (Mack) Nowak"
 
 import collections
 import configparser
+import os
+import re
+
+
+def get_vrep_version(vrep_dirname):
+    """Determine V-REP version."""
+    try:
+        with open(os.path.join(vrep_dirname, "readme.txt")) as readme_file:
+            line = readme_file.readline()
+        return re.search("release V([0-9]+\.[0-9]+\.[0-9]+)", line).group(1)
+    except Exception:
+        return "Unknown"
 
 
 def parse_config(filename):

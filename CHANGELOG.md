@@ -11,6 +11,10 @@ Changelog
   configuration with respect to the virtual environment to be created,
   dependencies to be installed, and optional additional directories and files
   to be created.
+- Added determining V-REP version (function `get_vrep_version()`). It is a
+  function that attempts to determine V-REP version based on the contents of
+  the V-REP directory. On some V-REP installations, however, such an attempt
+  may be unsuccessful.
 
 ### Documentation
 
