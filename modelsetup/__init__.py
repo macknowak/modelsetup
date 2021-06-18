@@ -24,6 +24,99 @@ def get_vrep_version(vrep_dirname):
         return "Unknown"
 
 
+def make_setup_file_bash(filename, venv_bin_dirpath, vrep_dirname, sys_name):
+    """Create setup file for Bash."""
+    venv_activate_script = os.path.join(venv_bin_dirpath, "activate")
+    if sys_name == "Mac":
+        vrep_alias = "open '$VREP_EXEC' --args"
+        if vrep_dirname:
+            vrep_exec = os.path.join(vrep_dirname, "vrep.app")
+        else:
+            vrep_exec = ""
+    else:
+        vrep_alias = "'$VREP_EXEC'"
+        if vrep_dirname:
+            vrep_exec = os.path.join(vrep_dirname, "vrep.sh")
+        else:
+            vrep_exec = ""
+    file_contents = (
+"""# ------
+# Config
+# ------
+
+# Virtual environment
+VENV_ACTIVATE_SCRIPT="__VENV_ACTIVATE_SCRIPT__"
+
+# V-REP
+VREP_EXEC="__VREP_EXEC__"
+
+# Python
+EXTRA_PYTHONPATH=""
+
+# Computational context
+PYOPENCL_CTX=""
+
+
+# -----
+# Setup
+# -----
+
+cleanup() {
+    unset VENV_ACTIVATE_SCRIPT
+    unset VREP_EXEC
+    unset EXTRA_PYTHONPATH
+    if [ -z "$PYOPENCL_CTX" ]; then
+        unset PYOPENCL_CTX
+    fi
+}
+
+setup() {
+    # Activate model virtual environment
+    if [ -z "$VENV_ACTIVATE_SCRIPT" ]; then
+        echo 'Error: empty VENV_ACTIVATE_SCRIPT.' >&2
+        return 1
+    fi
+    source "$VENV_ACTIVATE_SCRIPT"
+    if [ $? -ne 0 ]; then
+        echo 'Error: virtual environment not activated.' >&2
+        return 1
+    fi
+
+    # Make alias for launching V-REP
+    if [ -n "$VREP_EXEC" ]; then
+        alias vrep="__VREP_ALIAS__"
+    fi
+
+    # Add directories to be searched for Python module files
+    if [ -n "$EXTRA_PYTHONPATH" ]; then
+        export PYTHONPATH="${PYTHONPATH:+${PYTHONPATH}:}$EXTRA_PYTHONPATH"
+    fi
+
+    # Export environment variable describing computational context
+    if [ -n "$PYOPENCL_CTX" ]; then
+        export PYOPENCL_CTX
+    fi
+
+    return 0
+}
+
+setup
+if [ $? -eq 0 ]; then
+    cleanup
+    return 0
+else
+    cleanup
+    return 1
+fi
+""")
+    file_contents = file_contents.replace("__VENV_ACTIVATE_SCRIPT__",
+                                          venv_activate_script)
+    file_contents = file_contents.replace("__VREP_EXEC__", vrep_exec)
+    file_contents = file_contents.replace("__VREP_ALIAS__", vrep_alias)
+    with open(filename, 'x') as setup_file:
+        setup_file.write(file_contents)
+
+
 def parse_config(filename):
     """Parse configuration file."""
     parser = configparser.ConfigParser()

@@ -15,6 +15,11 @@ Changelog
   function that attempts to determine V-REP version based on the contents of
   the V-REP directory. On some V-REP installations, however, such an attempt
   may be unsuccessful.
+- Added creating a setup file for Bash (function `make_setup_file_bash()`). It
+  is a function that creates a setup script in the project directory of the
+  model and populates it with appropriate settings. The script can be later
+  sourced in the Bash interpreter, thereby activating the virtual environment,
+  setting relevant environment variables and creating useful aliases.
 
 ### Documentation
 
