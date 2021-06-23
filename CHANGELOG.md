@@ -20,6 +20,12 @@ Changelog
   model and populates it with appropriate settings. The script can be later
   sourced in the Bash interpreter, thereby activating the virtual environment,
   setting relevant environment variables and creating useful aliases.
+- Added creating a setup file for Windows command line (function
+  `make_setup_file_cmd()`). It is a function that creates a setup script in the
+  project directory of the model and populates it with appropriate settings.
+  The script can be later run in the Windows command-line interpreter, thereby
+  activating the virtual environment, setting relevant environment variables
+  and creating useful aliases.
 
 ### Documentation
 

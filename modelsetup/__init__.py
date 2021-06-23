@@ -117,6 +117,74 @@ fi
         setup_file.write(file_contents)
 
 
+def make_setup_file_cmd(filename, venv_bin_dirpath, vrep_dirname):
+    """Create setup file for Windows command line."""
+    venv_activate_script = os.path.join(venv_bin_dirpath, "activate.bat")
+    vrep_exec = os.path.join(vrep_dirname, "vrep.exe") if vrep_dirname else ""
+    file_contents = (
+"""@echo off
+
+rem ------
+rem Config
+rem ------
+
+rem Virtual environment
+set "VENV_ACTIVATE_SCRIPT=__VENV_ACTIVATE_SCRIPT__"
+
+rem V-REP
+set "VREP_EXEC=__VREP_EXEC__"
+
+rem Python
+set "EXTRA_PYTHONPATH="
+
+rem Computational context
+set "PYOPENCL_CTX="
+
+
+rem -----
+rem Setup
+rem -----
+
+rem Activate model virtual environment
+if not defined VENV_ACTIVATE_SCRIPT (
+    echo Error: empty VENV_ACTIVATE_SCRIPT. 1>&2
+    set SETUP_ERR=1
+    goto cleanup
+)
+call "%VENV_ACTIVATE_SCRIPT%"
+if %ERRORLEVEL% neq 0 (
+    echo Error: virtual environment not activated. 1>&2
+    set SETUP_ERR=1
+    goto cleanup
+)
+
+rem Make alias for launching V-REP
+if defined VREP_EXEC doskey vrep="%VREP_EXEC%" $*
+
+rem Add directories to be searched for Python module files
+if defined EXTRA_PYTHONPATH (
+    if defined PYTHONPATH set "PYTHONPATH=%EXTRA_PYTHONPATH%;%PYTHONPATH%"
+    if not defined PYTHONPATH set "PYTHONPATH=%EXTRA_PYTHONPATH%"
+)
+
+:cleanup
+set "VENV_ACTIVATE_SCRIPT="
+set "VREP_EXEC="
+set "EXTRA_PYTHONPATH="
+
+if defined SETUP_ERR (
+    set "SETUP_ERR="
+    exit /b 1
+)
+exit /b 0
+""")
+    file_contents = file_contents.replace("__VENV_ACTIVATE_SCRIPT__",
+                                          venv_activate_script)
+    file_contents = file_contents.replace("__VREP_EXEC__", vrep_exec)
+    with open(filename, 'x') as setup_file:
+        setup_file.write(file_contents)
+
+
 def parse_config(filename):
     """Parse configuration file."""
     parser = configparser.ConfigParser()
