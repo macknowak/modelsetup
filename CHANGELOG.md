@@ -37,6 +37,15 @@ Changelog
   this file is saved in the package install directory, from where it can
   subsequently be copied to the project directory of a model and adjusted
   accordingly.
+- Added initial model setup launcher (file `__main__.py`). It is the main
+  module of the package and thus is supposed to be executed as a script. When
+  executed, it launches an initial setup of a model in the following manner: it
+  first determines the desired configuration based on a provided configuration
+  file and also determines the system configuration, then creates a virtual
+  environment in the project directory of the model, and finally installs
+  necessary dependencies in the virtual environment, optionally creating as
+  well additional directories and files that will be used when running
+  simulations.
 
 ### Documentation
 
