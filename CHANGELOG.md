@@ -33,6 +33,10 @@ Changelog
   The script can be later run in the Windows command-line interpreter, thereby
   activating the virtual environment, setting relevant environment variables
   and creating useful aliases.
+- Added an example configuration file (file `init.cfg`). During installation
+  this file is saved in the package install directory, from where it can
+  subsequently be copied to the project directory of a model and adjusted
+  accordingly.
 
 ### Documentation
 

@@ -21,6 +21,7 @@ setup(
     url="https://github.com/macknowak/modelsetup",
     license="MIT License",
     packages=['modelsetup'],
+    package_data={'modelsetup': ["init.cfg"]},
     classifiers=[
         'Development Status :: 1 - Planning',
         'Environment :: Console',
