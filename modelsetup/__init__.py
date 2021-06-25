@@ -8,10 +8,16 @@ Nengo and the robot simulator V-REP.
 __version__ = '0.1.0.dev1'
 __author__ = "Przemyslaw (Mack) Nowak"
 
+import argparse
 import collections
 import configparser
+import errno
+import functools
 import os
 import re
+import shutil
+import subprocess
+import sys
 
 
 def get_vrep_version(vrep_dirname):
@@ -221,3 +227,262 @@ def parse_config(filename):
     cfg['create_setup_file'] = parser.getboolean('ExtraDirectoriesAndFiles',
                                                  'CreateSetupFile')
     return cfg
+
+
+def parse_args(args=None):
+    """Parse command line arguments."""
+
+    def file_r_type(filename):
+        """Check if file exists and is readable."""
+        if not os.path.isfile(filename):
+            raise argparse.ArgumentTypeError(f"no such file: '{filename}'")
+        if not os.access(filename, os.R_OK):
+            raise argparse.ArgumentTypeError(f"permission denied: "
+                                             f"'{filename}'")
+        return filename
+
+    parser = argparse.ArgumentParser(description="Set up model.")
+    parser.add_argument(
+        "config_filename", metavar="CONFIGFILE",
+        type=file_r_type,
+        help="config file")
+    args = parser.parse_args(args)
+    return args
+
+
+def main(args=None):
+    prog_name = os.path.basename(sys.argv[0])
+    n_warnings = 0
+
+    def warn(warning):
+        """Display warning and count it."""
+        nonlocal n_warnings
+        print(f"[{prog_name}] Warning:", warning, file=sys.stderr)
+        n_warnings += 1
+
+    # Process command line arguments
+    args = parse_args(args)
+
+    print("*** Configuration ***")
+
+    # Determine configuration
+    cfg = parse_config(args.config_filename)
+
+    # Import appropriate package for creating virtual environments
+    if not cfg['venv_python_exec']:
+        import venv
+        cfg['venv_python_exec'] = sys.executable
+        other_python_exec = False
+    else:
+        try:
+            import virtualenv
+        except ImportError:
+            raise ImportError(
+                "If a specific Python interpreter is required, package "
+                "'virtualenv' is required to proceed, but it is not "
+                "installed; please install it and try again.") from None
+        other_python_exec = True
+
+    # Check if virtual environment already exists
+    if os.path.isdir(cfg['venv_dirname']):
+        raise OSError(errno.EEXIST, "Directory exists", cfg['venv_dirname'])
+
+    # Determine Python version and bit architecture
+    if not other_python_exec:
+        python_ver = ".".join(map(str, sys.version_info[0:2]))
+        python_bit_arch = 64 if sys.maxsize > 2**32 else 32
+    else:
+        py_cmd = ('import sys; '
+                  'print(".".join(map(str, sys.version_info[0:2]))); '
+                  'print(64 if sys.maxsize > 2**32 else 32)')
+        try:
+            proc_info = subprocess.run([cfg['venv_python_exec'], "-c", py_cmd],
+                                       stdout=subprocess.PIPE, check=True)
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            raise ValueError(f"invalid Python interpreter: "
+                             f"'{cfg['venv_python_exec']}'") from None
+        python_ver, python_bit_arch = \
+            proc_info.stdout.decode('utf-8').splitlines()
+
+    # Determine operating system
+    if sys.platform.startswith('win'):
+        sys_name = "Windows"
+        lib_ext = "dll"
+        venv_bin_dirpath = os.path.join(cfg['venv_dirname'], "Scripts")
+        venv_pkg_dirpath = os.path.join(cfg['venv_dirname'], "Lib",
+                                        "site-packages")
+    else:
+        if sys.platform.startswith('darwin'):
+            sys_name = "Mac"
+            lib_ext = "dylib"
+        else:
+            sys_name = "Linux"
+            lib_ext = "so"
+        venv_bin_dirpath = os.path.join(cfg['venv_dirname'], "bin")
+        venv_pkg_dirpath = os.path.join(cfg['venv_dirname'], "lib",
+                                        f"python{python_ver}", "site-packages")
+
+    # If necessary, determine V-REP version
+    if cfg['vrep_dirname']:
+        if not os.path.isdir(cfg['vrep_dirname']):
+            raise ValueError(f"invalid V-REP directory: "
+                             f"'{cfg['vrep_dirname']}'")
+        vrep_version = get_vrep_version(cfg['vrep_dirname'])
+
+    # Confirm configuration
+    print("Directory:\t", cfg['venv_dirname'])
+    print("System:\t\t", sys_name)
+    print("Python:\t\t", python_ver, f"{python_bit_arch}-bit")
+    if cfg['use_requirements_file']:
+        print("Dependencies:\t requirements.txt")
+    else:
+        print("Dependencies:\t", args.config_filename)
+    print("V-REP:\t\t", vrep_version if cfg['vrep_dirname'] else "-")
+    print()
+    while True:
+        response = input("Proceed ([y]/n)? ").lower()
+        if response in ("", "y", "yes"):
+            break
+        elif response in ("n", "no"):
+            return 1
+
+    print("*** Creating virtual environment ***")
+
+    # Create virtual environment
+    if not other_python_exec:
+        print("Running venv")
+        if cfg['venv_system_site_packages']:
+            venv.main(["--system-site-packages", cfg['venv_dirname']])
+        else:
+            venv.main([cfg['venv_dirname']])
+    else:
+        sys_argv = sys.argv.copy()
+        sys.argv[1:] = ["-p", cfg['venv_python_exec']]
+        if cfg['venv_system_site_packages']:
+            sys.argv.append("--system-site-packages")
+        sys.argv.append(cfg['venv_dirname'])
+        try:
+            virtualenv.main()
+        except SystemExit:
+            pass
+        sys.argv = sys_argv
+        del sys_argv
+
+    print("*** Creating virtual environment completed ***\n")
+
+    print("*** Installing dependencies ***")
+
+    # Install dependencies
+    pip_exec = os.path.join(venv_bin_dirpath, "pip")
+    if cfg['use_requirements_file']:
+        if os.path.isfile("requirements.txt"):
+            proc_info = subprocess.run(
+                [pip_exec, "install", "-r", "requirements.txt"])
+            if proc_info.returncode:
+                warn("dependencies from file 'requirements.txt' not "
+                     "installed.")
+        else:
+            warn("file 'requirements.txt' not found.")
+    for dep_name, dep_spec in cfg['deps'].items():
+        if os.path.isdir(dep_spec):
+            cmd = [pip_exec, "install", "-e", dep_spec]
+        elif re.match("[0-9]+(\.[0-9]+)*$", dep_spec):
+            cmd = [pip_exec, "install", f"{dep_name}=={dep_spec}"]
+        else:
+            cmd = [pip_exec, "install", dep_spec]
+        proc_info = subprocess.run(cmd)
+        if proc_info.returncode:
+            warn(f"package '{dep_name}' not installed.")
+
+    # If necessary, install V-REP remote API bindings
+    if cfg['vrep_dirname']:
+        vrep_remote_api_dirpath = os.path.join(
+            cfg['vrep_dirname'], "programming", "remoteApiBindings")
+        vrep_py_dirpath = os.path.join(vrep_remote_api_dirpath, "python",
+                                       "python")
+        try:
+            shutil.copy(os.path.join(vrep_py_dirpath, "vrep.py"),
+                        venv_pkg_dirpath)
+        except Exception:
+            warn("file 'vrep.py' not copied.")
+        else:
+            print(f"File copied: 'vrep.py'.")
+        try:
+            shutil.copy(os.path.join(vrep_py_dirpath, "vrepConst.py"),
+                        venv_pkg_dirpath)
+        except Exception:
+            warn("file 'vrepConst.py' not copied.")
+        else:
+            print(f"File copied: 'vrepConst.py'.")
+        if sys_name == "Mac":
+            vrep_lib_filepath = os.path.join(vrep_remote_api_dirpath, "lib",
+                                             "lib", sys_name,
+                                             f"remoteApi.{lib_ext}")
+            if not os.path.isfile(vrep_lib_filepath):
+                vrep_lib_filepath = os.path.join(vrep_remote_api_dirpath,
+                                                 "lib", "lib",
+                                                 f"remoteApi.{lib_ext}")
+        else:
+            vrep_lib_filepath = os.path.join(
+                vrep_remote_api_dirpath, "lib", "lib", sys_name,
+                f"{python_bit_arch}Bit", f"remoteApi.{lib_ext}")
+            if not os.path.isfile(vrep_lib_filepath):
+                vrep_lib_filepath = os.path.join(
+                    vrep_remote_api_dirpath, "lib", "lib",
+                    f"{python_bit_arch}Bit", f"remoteApi.{lib_ext}")
+        try:
+            shutil.copy(vrep_lib_filepath, venv_pkg_dirpath)
+        except Exception:
+            warn(f"file 'remoteApi.{lib_ext}' not copied.")
+        else:
+            print(f"File copied: 'remoteApi.{lib_ext}'.")
+
+    print("*** Installing dependencies completed ***\n")
+
+    print("*** Creating additional directories and files ***")
+
+    # If necessary, create simulations directory
+    if cfg['create_simulations_dir']:
+        try:
+            os.mkdir("simulations")
+        except FileExistsError:
+            warn("directory 'simulations' not created; directory already "
+                 "exists.")
+        except Exception:
+            warn("directory 'simulations' not created.")
+        else:
+            print("Directory created: 'simulations'.")
+
+    # If necessary, create setup file
+    if cfg['create_setup_file']:
+        if sys_name == "Windows":
+            make_setup_file = make_setup_file_cmd
+            setup_filename = "setup.bat"
+        else:
+            make_setup_file = functools.partial(make_setup_file_bash,
+                                                sys_name=sys_name)
+            setup_filename = "setup.sh"
+        try:
+            make_setup_file(setup_filename, venv_bin_dirpath,
+                            cfg['vrep_dirname'])
+        except FileExistsError:
+            warn(f"file '{setup_filename}' not created; file already exists.")
+        except Exception:
+            warn(f"file '{setup_filename}' not created.")
+        else:
+            print(f"File created: '{setup_filename}'.")
+
+    if not (cfg['create_simulations_dir'] or cfg['create_setup_file']):
+        print("Nothing to create")
+
+    print("*** Creating additional directories and files completed ***\n")
+
+    # Display summary information
+    if not n_warnings:
+        print("*** Success ***")
+    else:
+        print(f"*** Success, but with {n_warnings} warning(s) ***")
+
+
+if __name__ == '__main__':
+    sys.exit(main())

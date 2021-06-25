@@ -6,6 +6,13 @@ Changelog
 
 ### Added
 
+- Added performing an initial setup of a model (function `main()`). It is a
+  function that first determines the desired configuration based on a provided
+  configuration file and also determines the system configuration, then creates
+  a virtual environment in the project directory of the model, and finally
+  installs necessary dependencies in the virtual environment, optionally
+  creating as well additional directories and files that will be used when
+  running simulations.
 - Added parsing a configuration file (function `parse_config()`). It is a
   function that reads a configuration file and determines the desired
   configuration with respect to the virtual environment to be created,
