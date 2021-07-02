@@ -49,6 +49,7 @@ Changelog
 
 ### Documentation
 
-- Added package description (file `README.md`).
+- Added package description (file `README.md`). It includes a general
+  characterization of the package and a description of the configuration file.
 - Added package license terms (file `LICENSE.txt`). The package is licensed
   according to the terms and conditions of the MIT License.
