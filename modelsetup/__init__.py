@@ -243,6 +243,11 @@ def parse_args(args=None):
 
     parser = argparse.ArgumentParser(description="Set up model.")
     parser.add_argument(
+        "--use-virtualenv",
+        dest='use_virtualenv', action='store_true',
+        help="use third-party package 'virtualenv' instead of package 'venv' "
+             "from the standard library")
+    parser.add_argument(
         "config_filename", metavar="CONFIGFILE",
         type=file_r_type,
         help="config file")
@@ -269,26 +274,35 @@ def main(args=None):
     cfg = parse_config(args.config_filename)
 
     # Import appropriate package for creating virtual environments
-    if not cfg['venv_python_exec']:
-        import venv
-        cfg['venv_python_exec'] = sys.executable
-        other_python_exec = False
-    else:
+    if args.use_virtualenv:
         try:
             import virtualenv
         except ImportError:
             raise ImportError(
-                "If a specific Python interpreter is required, package "
-                "'virtualenv' is required to proceed, but it is not "
-                "installed; please install it and try again.") from None
-        other_python_exec = True
+                "Third-party package 'virtualenv' was requested to be used "
+                "for creating a virtual environment, but it is not installed; "
+                "please install it and try again.") from None
+        use_virtualenv_pkg = True
+    elif cfg['venv_python_exec']:
+        try:
+            import virtualenv
+        except ImportError:
+            raise ImportError(
+                "If a specific Python interpreter is required, third-party "
+                "package 'virtualenv' is required to create a virtual "
+                "environment, but it is not installed; please install it and "
+                "try again.") from None
+        use_virtualenv_pkg = True
+    else:
+        import venv
+        use_virtualenv_pkg = False
 
     # Check if virtual environment already exists
     if os.path.isdir(cfg['venv_dirname']):
         raise OSError(errno.EEXIST, "Directory exists", cfg['venv_dirname'])
 
     # Determine Python version and bit architecture
-    if not other_python_exec:
+    if not cfg['venv_python_exec']:
         python_ver = ".".join(map(str, sys.version_info[0:2]))
         python_bit_arch = 64 if sys.maxsize > 2**32 else 32
     else:
@@ -338,6 +352,7 @@ def main(args=None):
     else:
         print("Dependencies:\t", args.config_filename)
     print("V-REP:\t\t", vrep_version if cfg['vrep_dirname'] else "-")
+    print("Creator:\t", "venv" if not use_virtualenv_pkg else "virtualenv")
     print()
     while True:
         response = input("Proceed ([y]/n)? ").lower()
@@ -349,7 +364,7 @@ def main(args=None):
     print("*** Creating virtual environment ***")
 
     # Create virtual environment
-    if not other_python_exec:
+    if not use_virtualenv_pkg:
         print("Running venv")
         if cfg['venv_system_site_packages']:
             venv.main(["--system-site-packages", cfg['venv_dirname']])
@@ -357,7 +372,9 @@ def main(args=None):
             venv.main([cfg['venv_dirname']])
     else:
         sys_argv = sys.argv.copy()
-        sys.argv[1:] = ["-p", cfg['venv_python_exec']]
+        del sys.argv[1:]
+        if cfg['venv_python_exec']:
+            sys.argv.extend(["-p", cfg['venv_python_exec']])
         if cfg['venv_system_site_packages']:
             sys.argv.append("--system-site-packages")
         sys.argv.append(cfg['venv_dirname'])

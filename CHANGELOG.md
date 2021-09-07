@@ -4,6 +4,13 @@ Changelog
 0.2.0 - Unreleased
 ------------------
 
+### Added
+
+- Added optional command-line argument for performing an initial setup of a
+  model, which specifies that third-party package _virtualenv_ should be used
+  for creating a virtual environment instead of package _venv_ from the
+  standard library (argument `--use-virtualenv`).
+
 0.1.0 - 2021-07-12
 ------------------
 
