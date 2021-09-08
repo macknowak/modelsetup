@@ -341,7 +341,7 @@ def main(args=None):
         if not os.path.isdir(cfg['vrep_dirname']):
             raise ValueError(f"invalid V-REP directory: "
                              f"'{cfg['vrep_dirname']}'")
-        vrep_version = get_vrep_version(cfg['vrep_dirname'])
+        vrep_ver = get_vrep_version(cfg['vrep_dirname'])
 
     # Confirm configuration
     print("Directory:\t", cfg['venv_dirname'])
@@ -351,7 +351,7 @@ def main(args=None):
         print("Dependencies:\t requirements.txt")
     else:
         print("Dependencies:\t", args.config_filename)
-    print("V-REP:\t\t", vrep_version if cfg['vrep_dirname'] else "-")
+    print("V-REP:\t\t", vrep_ver if cfg['vrep_dirname'] else "-")
     print("Creator:\t", "venv" if not use_virtualenv_pkg else "virtualenv")
     print()
     while True:
