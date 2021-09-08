@@ -433,14 +433,14 @@ def main(args=None):
         except Exception:
             warn("file 'vrep.py' not copied.")
         else:
-            print(f"File copied: 'vrep.py'.")
+            print("File copied: 'vrep.py'.")
         try:
             shutil.copy(os.path.join(vrep_py_dirpath, "vrepConst.py"),
                         venv_pkg_dirpath)
         except Exception:
             warn("file 'vrepConst.py' not copied.")
         else:
-            print(f"File copied: 'vrepConst.py'.")
+            print("File copied: 'vrepConst.py'.")
         if sys_name == "Mac":
             vrep_lib_filepath = os.path.join(vrep_remote_api_dirpath, "lib",
                                              "lib", sys_name,
