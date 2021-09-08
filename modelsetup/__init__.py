@@ -371,19 +371,29 @@ def main(args=None):
         else:
             venv.main([cfg['venv_dirname']])
     else:
-        sys_argv = sys.argv.copy()
-        del sys.argv[1:]
+        print("Running virtualenv", virtualenv.__version__)
+        args = []
         if cfg['venv_python_exec']:
-            sys.argv.extend(["-p", cfg['venv_python_exec']])
+            args.extend(["-p", cfg['venv_python_exec']])
         if cfg['venv_system_site_packages']:
-            sys.argv.append("--system-site-packages")
-        sys.argv.append(cfg['venv_dirname'])
-        try:
-            virtualenv.main()
-        except SystemExit:
-            pass
-        sys.argv = sys_argv
-        del sys_argv
+            args.append("--system-site-packages")
+        args.append(cfg['venv_dirname'])
+        virtualenv_pkg_major_ver = int(virtualenv.__version__.split(".", 1)[0])
+        if virtualenv_pkg_major_ver >= 20:
+            try:  # version >= 20.0.3
+                virtualenv.cli_run(args)
+            except AttributeError:  # version < 20.0.3
+                import virtualenv.run
+                virtualenv.run.run_via_cli(args)
+        else:
+            sys_argv = sys.argv.copy()
+            sys.argv[1:] = args
+            try:
+                virtualenv.main()
+            except SystemExit:
+                pass
+            sys.argv = sys_argv
+            del sys_argv
 
     print("*** Creating virtual environment completed ***\n")
 

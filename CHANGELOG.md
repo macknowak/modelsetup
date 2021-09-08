@@ -11,6 +11,11 @@ Changelog
   for creating a virtual environment instead of package _venv_ from the
   standard library (argument `--use-virtualenv`).
 
+### Fixed
+
+- Fixed compatibility issues with invoking versions >=20.0.0 of package
+  _virtualenv_.
+
 0.1.0 - 2021-07-12
 ------------------
 
