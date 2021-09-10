@@ -13,7 +13,7 @@ def read_description(filename):
 
 setup(
     name="modelsetup",
-    version='0.2.0.dev1',
+    version='0.2.0',
     author="Przemyslaw (Mack) Nowak",
     author_email="pnowak.mack@gmail.com",
     description="Utility supporting initial model setup",

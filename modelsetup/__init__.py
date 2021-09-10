@@ -5,7 +5,7 @@ computational model that may utilize spiking neural networks implemented using
 Nengo and the robot simulator V-REP.
 """
 
-__version__ = '0.2.0.dev1'
+__version__ = '0.2.0'
 __author__ = "Przemyslaw (Mack) Nowak"
 
 import argparse
